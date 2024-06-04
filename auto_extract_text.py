@@ -80,7 +80,7 @@ def process_video(video_path):
             print('not ret')
             break
         # Extract text from the frame
-        roi = get_score_region_by_image_process(frame)
+        roi = get_score_region_by_color_sege(frame)
         if not roi:
             continue
         print(roi)
@@ -110,5 +110,5 @@ def process_video(video_path):
 video_path = sys.argv[1]
 
 # Process the video
-video_path = 'Atari 2600 Longplay [066] Demon Attack.mp4'
+# video_path = 'Atari 2600 Longplay [066] Demon Attack.mp4'
 process_video(video_path)
