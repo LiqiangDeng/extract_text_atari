@@ -1,6 +1,6 @@
 import os
 import torch
-import config
+from config import get_config
 
 from tqdm import tqdm
 
@@ -10,6 +10,8 @@ from model import RecurrentAttention
 # TODO: Complete the image coordinates for dynamically obtaining scores through training the Recurrent Attention Model
 
 def get_score_region_by_rva(frame):
+
+    config, unparsed = get_config()
 
     best_model = load_checkpoint(is_best = True)
     
