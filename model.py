@@ -2,7 +2,7 @@ import torch.nn as nn
 
 import modules
 
-
+# TODO: Modify the model to fit specific tasks
 class RecurrentAttention(nn.Module):
     """A Recurrent Model of Visual Attention (RAM) [1].
 

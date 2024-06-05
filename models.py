@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from torch.distributions import Normal
 
-
+# TODO: Modify the model to fit specific tasks
 class Retina:
     """A visual retina.
 
