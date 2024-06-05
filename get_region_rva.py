@@ -57,7 +57,7 @@ def get_boundingbox():
     
 
 class Rav_trainer:
-    
+
     def __init__(self, config, data_loader):
         self.config = config
 
@@ -117,10 +117,6 @@ class Rav_trainer:
             config.patch_size,
             config.glimpse_scale,
         )
-
-        self.plot_dir = "./plots/" + self.model_name + "/"
-        if not os.path.exists(self.plot_dir):
-            os.makedirs(self.plot_dir)
 
         # build RAM model
         self.model = RecurrentAttention(
