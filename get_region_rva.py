@@ -9,10 +9,10 @@ from model import RecurrentAttention
 
 # TODO: Complete the image coordinates for dynamically obtaining scores through training the Recurrent Attention Model
 
+config, unparsed = get_config()
+
 def get_score_region_by_rva(frame):
-
-    config, unparsed = get_config()
-
+    
     best_model = load_checkpoint(is_best = True)
     
     x, y = x.to(config.device), y.to(config.device)
