@@ -80,14 +80,15 @@ def process_video(video_path):
             print('not ret')
             break
         # Extract text from the frame
-        roi = get_score_region_by_color_sege(frame)
-        if not roi:
-            continue
-        print(roi)
+        # roi = get_score_region_by_color_sege(frame)
+        # if not roi:
+        #     continue
+        # print(roi)
 
-        # Atari 2600 Longplay boundary determined by manual
+        # Atari 2600 Longplay Demon Attack boundary determined by manual
         # roi = (200, 25, 135, 20)
 
+        roi = (5, 7, 70, 15)
         x, y, w, h = roi
         bottom_right_x = x + w
         bottom_right_y = y + h
