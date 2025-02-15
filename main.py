@@ -4,6 +4,7 @@ import pytesseract
 import pandas as pd
 import numpy as np
 import cv2
+from paddleocr import PaddleOCR, draw_ocr
 from download_video import download_video_name
 
 
@@ -29,10 +30,55 @@ def extract_text(image, roi=None, debug=False):
     if debug:
         show_image('Gray Image', gray)
 
-    blur = cv2.GaussianBlur(gray, (3,3), 0)
+    # Enhance contrast (optional)
+    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
+    enhanced_gray = clahe.apply(gray)
+    if debug:
+        show_image('Enhanced Gray Image', enhanced_gray)
+
+    # blur = cv2.GaussianBlur(enhanced_gray, (3,3), 0)
+    # if debug:
+    #     show_image('Blur Image', blur)
+
+    # thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    # if debug:
+    #     show_image('Threshold Image', thresh)
+
+    # Morph open to remove noise and invert image
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+    # opening = cv2.morphologyEx(blur, cv2.MORPH_OPEN, kernel, iterations=1)
+    # if debug:
+    #     show_image('Opening Image', opening)
+
+    # invert = 255 - enhanced_gray
+    # if debug:
+    #     show_image('Inverted Image', invert)
+
+    config = '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789'
+    # config = r'--oem 3 --psm 6 outputbase digits'
+    text = pytesseract.image_to_string(enhanced_gray, config=config)
+    return text
+
+def extract_text_paddleocr(image, roi=None, debug=False):
+    if roi:
+        x, y, w, h = roi
+        image = image[y:y+h, x:x+w]
+    
+    # Convert image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    if debug:
+        show_image('Gray Image', gray)
+
+    # Enhance contrast (optional)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced_gray = clahe.apply(gray)
+    if debug:
+        show_image('Enhanced Gray Image', enhanced_gray)
+
+    blur = cv2.GaussianBlur(enhanced_gray, (3,3), 0)
     if debug:
         show_image('Blur Image', blur)
-        
+
     thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     if debug:
         show_image('Threshold Image', thresh)
@@ -43,14 +89,19 @@ def extract_text(image, roi=None, debug=False):
     if debug:
         show_image('Opening Image', opening)
 
-    invert = 255 - opening
-    if debug:
-        show_image('Inverted Image', invert)
+    # Initialize PaddleOCR
+    ocr = PaddleOCR(use_angle_cls=True, lang='en')  # need to run only once to download and load model into memory
+    
+    # Use PaddleOCR to extract text
+    result = ocr.ocr(opening, cls=True)
+    
+    # Extract and concatenate detected text
+    extracted_text = ''
+    for line in result:
+        for word in line:
+            extracted_text += word[1][0]
 
-    config = '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789'
-    # config = r'--oem 3 --psm 6 outputbase digits'
-    text = pytesseract.image_to_string(invert, config=config)
-    return text
+    return extracted_text
 
 
 if __name__ == "__main__":
@@ -61,11 +112,12 @@ if __name__ == "__main__":
     print(filtered_df)
 
     for index, row in filtered_df.iterrows():
-        if index != 1:
-            break
+        if index != 12:
+            continue
         name = row['name']
         yt_link = row['yt_link']
         bounding_box = eval(row['bounding_box'])
+        print(bounding_box)
 
         video_dir = os.path.join("data", name)
         os.makedirs(video_dir, exist_ok=True)
@@ -81,11 +133,15 @@ if __name__ == "__main__":
 
         # start to read video
         cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_interval = int(fps / 4) 
+
         frame_count = 0
+        save_frame_count = 0
         mappings = []
 
-        skip_seconds = 6 * 60
-        cap.set(cv2.CAP_PROP_POS_MSEC, skip_seconds * 1000)
+        # skip_seconds = 7 * 60
+        # cap.set(cv2.CAP_PROP_POS_MSEC, skip_seconds * 1000)
 
         # Loop through frames
         while cap.isOpened():
@@ -94,31 +150,36 @@ if __name__ == "__main__":
                 print('not ret')
                 break
 
-            roi = bounding_box
-            x, y, w, h = roi
-            bottom_right_x = x + w
-            bottom_right_y = y + h
+            if frame_count % frame_interval == 0:
 
-            text = extract_text(frame, roi, debug=True)
+                roi = bounding_box
+                x, y, w, h = roi
+                bottom_right_x = x + w
+                bottom_right_y = y + h
 
-            # Print the extracted text
-            print(text)
+                # text = extract_text_paddleocr(frame, roi)
+                text = extract_text(frame, roi)
+                # text = extract_text(frame, roi, debug=True)
 
-            # save frame
-            frame_filename = f"frame_{frame_count:04d}.png"
-            frame_path = os.path.join(video_dir, frame_filename)
-            cv2.imwrite(frame_path, frame)
+                # Print the extracted text
+                print('score:', text)
 
-            # save mapping
-            mappings.append(f"{frame_filename}, {text}")
+                # save frame
+                frame_filename = f"frame_{save_frame_count:06d}.png"
+                frame_path = os.path.join(video_dir, frame_filename)
+                cv2.imwrite(frame_path, frame)
 
-            # draw red box in frame
-            cv2.rectangle(frame, (x, y), (bottom_right_x, bottom_right_y), (0, 0, 255), 2)
+                # save mapping
+                mappings.append(f"frame_{save_frame_count:06d}.png, {text}")
+                save_frame_count += 1
 
-            # Display the frame (optional)
-            cv2.imshow('Frame', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+                # draw red box in frame
+                cv2.rectangle(frame, (x, y), (bottom_right_x, bottom_right_y), (0, 0, 255), 2)
+
+                # Display the frame (optional)
+                cv2.imshow('Frame', frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
 
             frame_count += 1
 

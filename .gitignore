@@ -2,3 +2,9 @@
 *.mov
 *.pdf
 *.xlsx
+*.csv
+*.txt
+**/*.png
+
+data
+.env
